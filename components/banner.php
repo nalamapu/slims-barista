@@ -7,7 +7,9 @@
  * @desc [description]
  */
 
- ?>
+// check access
+isDirect();
+?>
 
 <div class="per_title" style="background-color: #efdcb5;">
     <img src="<?= MWB ?>barista/barista.png" class="d-inline-block mr-2" style="margin-top: -45px;"/>

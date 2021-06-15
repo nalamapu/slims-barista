@@ -1,8 +1,10 @@
 <?php
 /**
- * @Created by          : Drajat Hasan
- * @Date                : 2021-06-11 12:41:16
- * @File name           : index.php
+ * @author Drajat Hasan
+ * @email drajathasan20@gmail.com
+ * @create date 2021-06-15 10:39:44
+ * @modify date 2021-06-15 10:39:44
+ * @licesense GPLv3
  */
 
 // key to authenticate
@@ -28,7 +30,14 @@ require SIMBIO . 'simbio_GUI/table/simbio_table.inc.php';
 require SIMBIO . 'simbio_GUI/form_maker/simbio_form_table_AJAX.inc.php';
 require SIMBIO . 'simbio_GUI/paging/simbio_paging.inc.php';
 require SIMBIO . 'simbio_DB/datagrid/simbio_dbgrid.inc.php';
+require SIMBIO.'simbio_DB/simbio_dbop.inc.php';
+require __DIR__ . '/helper.php';
 // end dependency
+
+if (isset($_GET['test']))
+{
+    test();
+}
 
 // privileges checking
 $can_read = utility::havePrivilege('barista', 'r');
@@ -37,97 +46,107 @@ if (!$can_read) {
     die('<div class="errorBox">' . __('You are not authorized to view this section') . '</div>');
 }
 
+// load settings
+utility::loadSettings($dbs);
+
+// set page title
 $page_title = 'Barista';
 
-/* Action Area */
+// set welcome
+components('welcome.php');
 
+/* Action Area */
+if (isset($_GET['action']))
+{
+    components('install.php');
+}
 /* End Action Area */
 ?>
 <div class="menuBox">
     <div class="menuBoxInner memberIcon">
         <!-- Banner -->
-        <?php include_once __DIR__ . '/components/banner.php' ?>
+        <?php components('banner.php') ?>
         <!-- Form -->
-        <?php include_once __DIR__ . '/components/form.php' ?>
+        <?php components('form.php') ?>
+        <!-- Navbvar -->
+        <?php components('navbar.php') ?>
     </div>
 </div>
 <div class="result">
 <?php
-/* Datagrid area */
-/**
- * table spec
- * ---------------------------------------
- * Tuliskan nama tabel pada variabel $table_spec. Apabila anda 
- * ingin melakukan pegabungan banyak tabel, maka anda cukup menulis kan
- * nya saja layak nya membuat query seperti biasa
- *
- * Contoh :
- * - dummy_plugin as dp left join non_dummy_plugin as ndp on dp.id = ndp.id ... dst
- *
- */
-$table_spec = 'barista_files';
-
-// membuat datagrid
-$datagrid = new simbio_datagrid();
-
-/** 
- * Menyiapkan kolom
- * -----------------------------------------
- * Format penulisan sama seperti anda menuliskan di query pada phpmyadmin/adminer/yang lain,
- * hanya di SLiMS anda diberikan beberapa opsi seperti, penulisan dengan gaya multi parameter,
- * dan gaya single parameter.
- *
- * Contoh :
- * - Single Parameter : $datagrid->setSQLColumn('id', 'kolom1, kolom2, kolom3'); // penulisan langsung
- * - Single Parameter : $datagrid->setSQLColumn('id', 'kolom1', 'kolom2', 'kolom3'); // penulisan secara terpisah
- *
- * Catatan :
- * - Jangan lupa menyertakan kolom yang bersifat PK (Primary Key) / FK (Foreign Key) pada urutan pertama,
- *   karena kolom tersebut digunakan untuk pengait pada proses lain.
- */
- $datagrid->setSQLColumn('id as Aksi, id as Deskripsi, last_update as "Terakhir diperbaharui", register_date as "Taggal Register"');
-
-/** 
- * Pencarian data
- * ------------------------------------------
- * Bagian ini tidak lepas dari nama kolom dari tabel yang digunakan.
- * Jadi, untuk pencarian yang lebih banyak anda dapat menambahkan kolom pada variabel
- * $criteria
- *
- * Contoh :
- * - $criteria = ' kolom1 = "'.$keywords.'" OR kolom2 = "'.$keywords.'" OR kolom3 = "'.$keywords.'"';
- * - atau anda bisa menggunakan query anda.
- */
- if (isset($_GET['keywords']) AND $_GET['keywords']) 
- {
-     $keywords = utility::filterData('keywords', 'get', true, true, true);
-     $criteria = ' kolom1 = "'.$keywords.'"';
-     // jika ada keywords maka akan disiapkan criteria nya
-     $datagrid->setSQLCriteria($criteria);
- }
-
-/** 
- * Atribut tambahan
- * --------------------------------------------
- * Pada bagian ini anda dapat menentukan atribut yang akan muncul pada datagrid
- * seperti judul tombol, dll
- */
-// set table and table header attributes
-$datagrid->icon_edit = SWB.'admin/'.$sysconf['admin_template']['dir'].'/'.$sysconf['admin_template']['theme'].'/edit.gif';
-$datagrid->table_name = 'memberList';
-$datagrid->table_attr = 'id="dataList" class="s-table table"';
-$datagrid->table_header_attr = 'class="dataListHeader" style="font-weight: bold;"';
-// set delete proccess URL
-$datagrid->chbox_form_URL = $_SERVER['PHP_SELF'];
-
-// put the result into variables
-$datagrid_result = $datagrid->createDataGrid($dbs, $table_spec, 20, false); // object database, spesifikasi table, jumlah data yang muncul, boolean penentuan apakah data tersebut dapat di edit atau tidak.
-if (isset($_GET['keywords']) AND $_GET['keywords']) {
-    $msg = str_replace('{result->num_rows}', $datagrid->num_rows, __('Found <strong>{result->num_rows}</strong> from your keywords'));
-    echo '<div class="infoBox">' . $msg . ' : "' . htmlspecialchars($_GET['keywords']) . '"<div>' . __('Query took') . ' <b>' . $datagrid->query_time . '</b> ' . __('second(s) to complete') . '</div></div>';
+switch (true)
+{
+    case (isset($_GET['section'])):
+        components(preg_replace('/[^A-Za-z\/]/i', '', $_GET['section']) . '.php');
+        break;
+    default:
+        components('datagrid.php');
+        break;
 }
-// menampilkan datagrid
-echo $datagrid_result;
-/* End datagrid */
 ?>
 </div>
+<script>
+    
+       function navClick(e){
+            
+            let target = e.getAttribute('data-target')
+            let navlink = document.querySelectorAll('.nav-link');
+
+            navlink.forEach(element => {
+                element.classList.remove('active')
+            });
+
+            e.classList.add('active')
+
+            if (target !== 'default')
+            {
+                $('#mainContent').simbioAJAX(`<?= $_SERVER['PHP_SELF'] ?>?section=${target}`)
+            }
+            else
+            {
+                $('#mainContent').simbioAJAX(`<?= $_SERVER['PHP_SELF'] ?>`)
+            }
+        }
+
+        function install(e, path, url, destBtn)
+        {
+            let doc = document;
+            let linkToDownload = url+'/archive/refs/heads/master.zip';
+            let children = e.children;
+            
+            doc.querySelectorAll('.actionBtn').forEach(el => {
+                el.classList.add('disabled');
+            })
+            
+            e.classList.remove('btn-primary', 'disabled');
+            e.classList.add('btn-info');
+            children[0].classList.remove('d-none');
+            children[1].innerHTML = 'Memasang';
+
+            fetch('<?= $_SERVER['PHP_SELF'] ?>?action=install', {
+            method: 'POST',
+            body: JSON.stringify({
+                pathDest: path,
+                urlDownload: linkToDownload
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log(result);
+                if (result.status)
+                {
+                    doc.querySelectorAll('.actionBtn').forEach(el => {
+                        el.classList.remove('disabled');
+                    })
+                    
+                    e.classList.add('btn-success');
+                    e.classList.remove('btn-info');
+                    children[0].classList.add('d-none');
+                    children[1].innerHTML = 'Terpasang';
+                }
+            })
+            .catch(error => {
+                alert(error);
+            })
+        }
+</script>
