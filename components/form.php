@@ -12,7 +12,7 @@ isDirect();
 
 ?>
 <div class="sub_section">
-    <form name="search" action="<?= $_SERVER['PHP_SELF'] ?>" id="search" method="get" class="form-inline"><?php echo __('Search'); ?>
+    <form name="search" action="<?= $_SERVER['PHP_SELF'] . ((isset($_GET['section']) ? '?section='.addcslashes(strip_tags($_GET['section']), '\\') : null  )) ?>" id="search" method="get" class="form-inline"><?php echo __('Search'); ?>
         <input type="text" name="keywords" class="form-control col-md-3"/>
         <input type="submit" id="doSearch" value="<?php echo __('Search'); ?>"
                 class="s-btn btn btn-default"/>

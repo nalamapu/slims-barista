@@ -22,6 +22,9 @@ if (!defined('SB')) {
     require SB.'admin/default/session.inc.php';
 }
 
+// load settings
+utility::loadSettings($dbs);
+
 // IP based access limitation
 require LIB . 'ip_based_access.inc.php';
 // set dependency
@@ -36,7 +39,7 @@ require __DIR__ . '/helper.php';
 
 if (isset($_GET['test']))
 {
-    test();
+    //test();
 }
 
 // privileges checking
@@ -45,9 +48,6 @@ $can_read = utility::havePrivilege('barista', 'r');
 if (!$can_read) {
     die('<div class="errorBox">' . __('You are not authorized to view this section') . '</div>');
 }
-
-// load settings
-utility::loadSettings($dbs);
 
 // set page title
 $page_title = 'Barista';
@@ -85,68 +85,4 @@ switch (true)
 }
 ?>
 </div>
-<script>
-    
-       function navClick(e){
-            
-            let target = e.getAttribute('data-target')
-            let navlink = document.querySelectorAll('.nav-link');
-
-            navlink.forEach(element => {
-                element.classList.remove('active')
-            });
-
-            e.classList.add('active')
-
-            if (target !== 'default')
-            {
-                $('#mainContent').simbioAJAX(`<?= $_SERVER['PHP_SELF'] ?>?section=${target}`)
-            }
-            else
-            {
-                $('#mainContent').simbioAJAX(`<?= $_SERVER['PHP_SELF'] ?>`)
-            }
-        }
-
-        function install(e, path, url, destBtn)
-        {
-            let doc = document;
-            let linkToDownload = url+'/archive/refs/heads/master.zip';
-            let children = e.children;
-            
-            doc.querySelectorAll('.actionBtn').forEach(el => {
-                el.classList.add('disabled');
-            })
-            
-            e.classList.remove('btn-primary', 'disabled');
-            e.classList.add('btn-info');
-            children[0].classList.remove('d-none');
-            children[1].innerHTML = 'Memasang';
-
-            fetch('<?= $_SERVER['PHP_SELF'] ?>?action=install', {
-            method: 'POST',
-            body: JSON.stringify({
-                pathDest: path,
-                urlDownload: linkToDownload
-                })
-            })
-            .then(response => response.json())
-            .then(result => {
-                console.log(result);
-                if (result.status)
-                {
-                    doc.querySelectorAll('.actionBtn').forEach(el => {
-                        el.classList.remove('disabled');
-                    })
-                    
-                    e.classList.add('btn-success');
-                    e.classList.remove('btn-info');
-                    children[0].classList.add('d-none');
-                    children[1].innerHTML = 'Terpasang';
-                }
-            })
-            .catch(error => {
-                alert(error);
-            })
-        }
-</script>
+<script with-url="yes" http-url="<?= $_SERVER['PHP_SELF'] ?>" src="<?= AWB ?>modules/barista/barista.js"></script>

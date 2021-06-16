@@ -75,13 +75,14 @@ $element = [
                 [
                 'text', 
                 'repo_server', 'Alamat Repo Agregator', 
-                ($sysconf['barista']['repo_server']) ?? 'https://github.com/drajathasan/slims-barista-repo/', 
+                ($sysconf['barista']['repo_server']) ?? 'https://raw.githubusercontent.com/drajathasan/slims-barista-repo/main/list.json', 
                 'style="width: 60%;" class="form-control"'
                 ]
             ],
             'addSelectList'
             =>
             [
+                ['auto_active', __('Otomatis Aktif'), [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['auto_active']??0,'class="form-control col-3"'],
                 ['make_cache', __('Hidupkan Cache'), [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['make_cache']??0,'class="form-control col-3"'],
                 ['refresh_to_update', __('Refresh untuk memperbaharui daftar'), [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['refresh_to_update']??0,'class="form-control col-3"']
             ]
