@@ -11,12 +11,13 @@ if (isset($_POST['urlDownload']) && isset($_POST['pathDest']))
         // make dest
         $dest = SB. 'plugins/';
         // unpacking zip file from cache folder to dest folder
-        $unpacking = renamingZipDir(extractZip($filepath, $dest), basename($_POST['pathDest']), basename($_POST['branchName']), urldecode($_POST['urlDownload']));
-
-        if (!$unpacking['status'])
-        {
-            echo json_encode($unpacking);
-        }
+        renamingZipDir(
+            extractZip($filepath, $dest), 
+            basename($_POST['pathDest']), 
+            basename($_POST['branchName']), 
+            urldecode($_POST['urlDownload']),
+            $_POST['id']
+        );
     }
     else
     {

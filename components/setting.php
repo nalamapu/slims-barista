@@ -25,6 +25,9 @@ if (isset($_POST['saveBarista']))
         }
     }
 
+    // set version
+    $_POST['version'] = replaceString(BARISTA_VERSION);
+
     // to serialize
     $serializeData = serialize($_POST);
 
@@ -69,20 +72,26 @@ $form->table_content_attr = 'class="alterCell2"';
 
 // server repo
 $element = [
+            'addAnything'
+            =>
+            [
+                ['Versi Barista', '<b>'.($sysconf['barista']['version']??BARISTA_VERSION).'</b>']
+            ],
             'addTextField'
             => 
             [
                 [
-                'text', 
-                'repo_server', 'Alamat Repo Agregator', 
-                ($sysconf['barista']['repo_server']) ?? 'https://raw.githubusercontent.com/drajathasan/slims-barista-repo/main/list.json', 
-                'style="width: 60%;" class="form-control"'
+                    'text', 
+                    'repo_server', 'Alamat Repo Agregator', 
+                    ($sysconf['barista']['repo_server']) ?? 'https://raw.githubusercontent.com/drajathasan/slims-barista-repo/main/list-plugin.json', 
+                    'style="width: 60%;" class="form-control"'
                 ]
             ],
             'addSelectList'
             =>
             [
-                ['auto_active', __('Otomatis Aktif'), [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['auto_active']??0,'class="form-control col-3"'],
+                ['overwrite', 'Timpa folder', [['y', __('Yes')],['t', __('No')]], $sysconf['barista']['overwrite']??0,'class="form-control col-3"', 'Timpa folder plugin jika sudah ada atau folder tersebut sebelumnya terdeteksi korup'],
+                ['auto_active', __('Otomatis Aktif'), [['y', __('Enable')],['t', __('Disable')]], $sysconf['barista']['auto_active']??0,'class="form-control col-3"'],
                 ['make_cache', __('Hidupkan Cache'), [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['make_cache']??0,'class="form-control col-3"'],
                 ['refresh_to_update', __('Refresh untuk memperbaharui daftar'), [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['refresh_to_update']??0,'class="form-control col-3"']
             ]

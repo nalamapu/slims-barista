@@ -42,12 +42,12 @@ function install(e, path, url, branch)
     // setup link to download
     let linkToDownload = `${url}/archive/refs/heads/${branch}.zip`
     // setresult area
-    let result = doc.querySelector('.resultBarista')
+    let resultArea = doc.querySelector('.resultBarista')
     // set children
     let children = e.children
     
     // check internet connection
-    isOnline(result);
+    isOnline(resultArea);
 
     // manipulate
     doc.querySelectorAll('.actionBtn').forEach(el => {
@@ -67,13 +67,13 @@ function install(e, path, url, branch)
         body: JSON.stringify({
             pathDest: path,
             urlDownload: linkToDownload,
-            branchName: branch
+            branchName: branch,
+            id: parseInt(children[0].getAttribute('for'))
         })
     })
     .then(response => response.json())
     .then(result => {
-        // console.log(result);
-        // if success
+        
         if (result.status)
         {
             // remove disable class
@@ -91,7 +91,7 @@ function install(e, path, url, branch)
             setTimeout(() => {
                 // reload it
                 location.reload()
-            }, 2000);
+            }, 500);
         }
         else
         {
@@ -102,24 +102,23 @@ function install(e, path, url, branch)
             children[1].innerHTML = 'Gagal memasang'
 
             // set msg
-            result.innerHTML = result.msg
-            result.classList.add('bg-danger', 'text-white')
-            result.classList.remove('d-none')
+            resultArea.innerHTML = result.msg
+            resultArea.classList.add('bg-danger', 'text-white')
+            resultArea.classList.remove('d-none')
         }
     })
-    // uncomment for debugging
-    // .catch(error => {
-    //     // set alert if request is failed
-    //     // add error class
-    //     e.classList.add('btn-danger')
-    //     e.classList.remove('btn-info')
-    //     children[0].classList.add('d-none')
-    //     children[1].innerHTML = 'Gagal memasang'
-    //     // set msg
-    //     result.innerHTML = error + '. Tekan F12 untuk info lebih lanjut'
-    //     result.classList.add('bg-danger', 'text-white');
-    //     result.classList.remove('d-none')
-    // })
+    .catch(error => {
+        // set alert if request is failed
+        // add error class
+        e.classList.add('btn-danger')
+        e.classList.remove('btn-info')
+        children[0].classList.add('d-none')
+        children[1].innerHTML = 'Gagal memasang'
+        // set msg
+        resultArea.innerHTML = error + '. Tekan F12 untuk info lebih lanjut'
+        resultArea.classList.add('bg-danger', 'text-white');
+        resultArea.classList.remove('d-none')
+    })
 }
 
 /**
@@ -136,6 +135,11 @@ function isOnline(resultSelector)
         resultSelector.classList.remove('d-none')
         return;
     }
+}
+
+function checkUpdate(id)
+{
+    
 }
 
 // check connection

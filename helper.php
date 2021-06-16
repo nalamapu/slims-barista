@@ -117,9 +117,37 @@ function baristaMigration(object $sqlOp, bool $generateLocalAvailablePlugin = tr
         $data = json_decode(file_get_contents(__DIR__ . '/barista-plugin-local.json'), TRUE);
 
         foreach ($data as $index => $plugin) {
-            @$sqlOp->insert('barista_files', ['raw' => json_encode($plugin), 'register_date' => date('Y-m-d H:i:s'), 'last_update' => date('Y-m-d H:i:s')]);
+            $id = ($index);
+            if (!localIdExists([$dbs, $sqlOp], $id, $plugin))
+            {
+                @$sqlOp->insert('barista_files', ['id' => $id, 'raw' => json_encode($plugin), 'register_date' => date('Y-m-d H:i:s'), 'last_update' => date('Y-m-d H:i:s')]);
+            }
         }
     }
+}
+
+/**
+ * localIdExists
+ *
+ * @param array $objectInArray
+ * @param integer $id
+ * @param array $data
+ * @return bool
+ */
+function localIdExists(array $objectInArray, int $id, array $data)
+{
+    // filtering
+    $baristaId = (replaceString($id, 'num') + 1);
+    // check query
+    $checkId = $objectInArray[0]->query('select id from barista_files where id = '.$baristaId);
+
+    if ($checkId->num_rows === 1)
+    {
+        $objectInArray[1]->update('barista_files', ['raw' => json_encode($data), 'last_update' => date('Y-m-d H:i:s')], 'id='.$baristaId);
+        return true;
+    }
+    // set false
+    return false;
 }
 
 
@@ -240,39 +268,48 @@ function extractZip(string $file, string $extract_to)
  * @param string $namepath
  * @param string $branch
  * 
- * @return boolean
+ * @return string
  */
-function renamingZipDir(bool $zip, string $namepath, string $branch, string $urlDownload)
+function renamingZipDir(bool $zip, string $namepath, string $branch, string $urlDownload, int $baristaId)
 {
     global $sysconf;
 
     if ($zip)
     {
+        // delete and overwrite
+        if ($sysconf['barista']['auto_active'] === 'y' && file_exists(SB.'plugins/'.$namepath))
+        {
+            @rmdir(SB.'plugins/'.$namepath);
+        }
+
+        // renaming folder
         if (rename(SB.'plugins/'.$namepath.'-'.$branch, SB.'plugins/'.$namepath))
         {
             $url = substr($urlDownload, 0, strpos($urlDownload, '/archive'));
 
-            if ($sysconf['barista']['auto_active'] === 'y')
-            {
-                try {
-                   activatingPlugin($url);
-               } catch (Exception $exception) {
-                   echo json_encode(['status' => false, 'message' => $exception->getMessage()]);
-                   exit;
-               }
-            }
-            else
-            {
-                echo json_encode(['status' => true, 'message' => 'Plugin berhasil diinstall']);
+            try {
+                activatingPlugin($url, $baristaId);
+            } catch (Exception $exception) {
+                echo json_encode(['status' => false, 'message' => $exception->getMessage()]);
                 exit;
             }
         }
     }
-    return ['status' => $zip, 'msg' => 'Gagal mengekstrak zip, folder sudah ada atau folder korup!'];
+    echo json_encode(['status' => $zip, 'msg' => 'Gagal mengekstrak zip, folder sudah ada atau folder korup!']);
+    exit;
 }
 
-function activatingPlugin(string $url)
+/**
+ * Activating Plugin
+ *
+ * @param string $url
+ * @param integer $baristaId
+ * @return string
+ */
+function activatingPlugin(string $url, int $baristaId)
 {
+    global $sysconf;
+
     /**
      * Some modification from admin/modules/system/plugins.php
      */
@@ -286,6 +323,19 @@ function activatingPlugin(string $url)
     $id = array_keys($metaObjectPlugin)[0] ?? die(json_encode(['status' => false, 'msg' => 'Plugin not found']));
     // set plugin
     $plugin = $metaObjectPlugin[$id];
+
+        // check auto active
+    if ($sysconf['barista']['auto_active'] === 't')
+    {
+        // setup options
+        $baristaOptions = DB::getInstance()
+                        ->prepare('update barista_files set options = ?, active = ? where id = ?');
+
+        $baristaOptions->execute([json_encode(['id' => $id, 'path' => $plugin->path, 'version' => $plugin->version]), 0, $baristaId]);
+        // set response
+        echo json_encode(['status' => true, 'message' => 'Plugin berhasil diinstall']);
+        exit;
+    }
 
     // active query
     $activeQuery = DB::getInstance()->prepare('INSERT INTO plugins (id, path, options, created_at, deleted_at, uid) VALUES (:id, :path, :options, :created_at, :deleted_at, :uid)');
@@ -316,6 +366,12 @@ function activatingPlugin(string $url)
     $run = $activeQuery->execute();
 
     if ($run) {
+        // setup options
+        $baristaOptions = DB::getInstance()
+                        ->prepare('update barista_files set options = ?, active = ? where id = ?');
+
+        $baristaOptions->execute([json_encode(['id' => $id, 'path' => $plugin->path, 'version' => $plugin->version]), 1, $baristaId]);
+        // set response
         echo json_encode(['status' => true, 'message' => $message]);
     } else {
         echo json_encode(['status' => false, 'message' => DB::getInstance()->errorInfo()]);
@@ -370,22 +426,21 @@ function createPluginDir(string $pathname)
     }
 }
 
-function searchPlugin(string $dest)
-{
-    $dir = scandir($dest);
-}
-
-
 /**
  * Just for debugging
  * @return mix
  */
 function test()
 {
-    activatingPlugin('https://github.com/idoalit/label_barcode');
 }
 
-
+/**
+ * dd a.k.a dump data
+ *
+ * @param mix $mix
+ * @param boolean $exit
+ * @return void
+ */
 function dd($mix, bool $exit = true)
 {
     echo '<pre>';
@@ -393,6 +448,38 @@ function dd($mix, bool $exit = true)
     echo '</pre>';
 
     if ($exit) exit;
+}
+
+/**
+ * Replace String
+ * 
+ * Helper to replace character with preg_replace with template
+ * or custom regex
+ *
+ * @param string $input
+ * @param string $type
+ * @param string $regex
+ * @return void
+ */
+function replaceString(string $input, string $type = 'alphanum', string $regex = '')
+{
+    switch ($type) {
+        case 'num':
+            $result = preg_replace('/[^0-9]/', '', $input);
+            break;
+
+        case 'alpha':
+            $result = preg_replace('/[^A-Za-z]/', '', $input);
+            break;
+        case 'regex':
+            $result = preg_replace($regex, '', $input);
+            break;
+        default:
+            $result = preg_replace('/[^A-Za-z0-9\.\-\_]/', '', $input);
+            break;
+    }
+
+    return $result;
 }
 
 // run php check

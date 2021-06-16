@@ -22,6 +22,9 @@ if (!defined('SB')) {
     require SB.'admin/default/session.inc.php';
 }
 
+// Barista Version
+define('BARISTA_VERSION', '1.0.0-alpha-3');
+
 // load settings
 utility::loadSettings($dbs);
 
