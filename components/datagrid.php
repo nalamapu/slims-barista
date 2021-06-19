@@ -1,11 +1,32 @@
 <?php
+/**
+ * @author Drajat Hasan
+ * @email drajathasan20@gmail.com
+ * @create date 2021-06-19 13:13:28
+ * @modify date 2021-06-19 13:13:28
+ * @desc [description]
+ */
+
 // check access
 isDirect();
+
+echo <<<HTML
+    <div class="w-100 block p-3 text-white">
+        <button onclick="getLastListApp()" class="btn btn-danger float-right">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1h-2z"/>
+            <path fill-rule="evenodd" d="M7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708l3-3z"/>
+            </svg>
+            Perbaharui daftar
+        </button>
+    </div>
+HTML;
 
 // set constant
 define('PluginActive', ['btn-success', 'Terpasang', 'Plugin sudah aktif']);
 define('PluginInstalledNotActive', ['btn-secondary', 'Terunduh', 'Plugin sudah ada, namun tidak aktif']);
 define('PluginNotInstalled', ['btn-primary', 'Pasang', 'Klik untuk memasang']);
+define('PluginCorrupted', ['btn-danger', 'Plugin Korup', 'Kemungkinan plugin terhapus atau lain sebab (Klik untuk memasang kembali).']);
 
 // table spec
 $table_spec = 'barista_files';
@@ -14,8 +35,17 @@ $datagrid = new simbio_datagrid();
 // set column
 $datagrid->setSQLColumn('raw as Deskripsi, id as Aksi, last_update as "Terakhir diperbaharui", register_date as "Taggal Register"');
 
-
-function isPluginActive($db, $id)
+/**
+ * Modify Column Content
+ */
+/**
+ * isPluginActive
+ *
+ * @param object $db
+ * @param integer $id
+ * @return Array
+ */
+function isPluginActive(object $db, int $id)
 {
     // get options
     $id = (int)$id;
@@ -31,17 +61,20 @@ function isPluginActive($db, $id)
             $plugin = $db->query('select id from plugins where id = \''.$db->escape_string($meta['id']).'\'');
             return ($plugin->num_rows) ? PluginActive : PluginInstalledNotActive;
         }
-        return PluginInstalledNotActive;
+        return PluginCorrupted;
     }
 
     return PluginNotInstalled;
-
 }
 
 /**
- * Modify Column Content
+ * setupActionButton
+ *
+ * @param object $db
+ * @param array $column
+ * @return void
  */
-function setupActionButton($db, $column)
+function setupActionButton(object $db, array $column)
 {
     // decoding
     $data = json_decode($column[0], true);
@@ -59,15 +92,15 @@ function setupActionButton($db, $column)
     $buffer = <<<HTML
             <button class="btn {$button[0]} actionBtn" title="{$button[2]}"><span class="d-inline-block">{$button[1]}</span></button></button>'
     HTML;
-    if ($button[1] !== 'Terpasang')
+    if (!in_array($button[1], ['Terpasang','Terunduh']))
     {
         $buffer = <<<HTML
             <button class="btn {$button[0]} actionBtn" title="{$button[2]}" onclick="install(this, '{$path}', '{$pluginURL}', '{$branch}')">
                 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="spinLoader d-none" for="{$column[1]}" style="margin: auto;" width="25px" height="25px" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">
                     <circle cx="50" cy="50" r="32" stroke-width="8" stroke="#e0e0e0" stroke-dasharray="50.26548245743669 50.26548245743669" fill="none" stroke-linecap="round">
                     <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" keyTimes="0;1" values="0 50 50;360 50 50"></animateTransform>
-                </circle>
-            </svg>    
+                    </circle>
+                </svg>    
             <span class="d-inline-block">{$button[1]}</span></button>
         HTML;
     }
@@ -76,14 +109,21 @@ function setupActionButton($db, $column)
 }
 $datagrid->modifyColumnContent(1, 'callback{setupActionButton}');
 
-function setUpDescription($db, $data)
+/**
+ * seUpDescription
+ *
+ * @param object $db
+ * @param array $data
+ * @return void
+ */
+function setUpDescription(object $db, array $data)
 {
     // extracting json data
     $decodedData = json_decode($data[0], TRUE);
     // modify string of plugin name
     $pluginName = ucwords(str_replace('_', ' ', $decodedData['PluginName']));
     // filtering destriction
-    $description = strip_tags($decodedData['Description']);
+    $description = substr(strip_tags($decodedData['Description']), 0,80);
     // set version variable
     $version = $decodedData['Version'];
     // Author in html
@@ -98,7 +138,7 @@ function setUpDescription($db, $data)
             </div>
             <div class="d-inline-block">
                 <h6><a class="notAJAX w-full block" target="_blank" href="{$decodedData['PluginURI']}"><b>{$pluginName}</b></a></h6>
-                <p class="w-full block text-justify mb-0">{$description}</p>
+                <p style="max-width: 550px" class="block text-justify mb-0">{$description}</p>
                 <span class="d-inline-block">{$author}</span> :: <span class="d-inline-block text-danger">{$version}</span>
             </div>
         </section>

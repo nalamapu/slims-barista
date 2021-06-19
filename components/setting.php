@@ -1,4 +1,12 @@
 <?php
+/**
+ * @author Drajat Hasan
+ * @email drajathasan20@gmail.com
+ * @create date 2021-06-19 13:11:11
+ * @modify date 2021-06-19 13:11:11
+ * @desc [description]
+ */
+
 // check direct access
 isDirect();
 
@@ -70,7 +78,7 @@ $form->table_attr = 'id="dataList" class="s-table table"';
 $form->table_header_attr = 'class="alterCell font-weight-bold"';
 $form->table_content_attr = 'class="alterCell2"';
 
-// server repo
+// set element
 $element = [
             'addAnything'
             =>

@@ -1,41 +1,59 @@
 <?php
-// check access
+/**
+ * @author Drajat Hasan
+ * @email drajathasan20@gmail.com
+ * @create date 2021-06-19 13:16:31
+ * @modify date 2021-06-19 13:16:31
+ * @desc [description]
+ */
+
+ // check access
 isDirect();
 
 // table spec
-$table_spec = 'plugins';
+$table_spec = 'barista_files';
 // membuat datagrid
 $datagrid = new simbio_datagrid();
 // set column
-$datagrid->setSQLColumn('path as Plugin, id as Aksi, created_at as "Dipasang"');
+$datagrid->setSQLColumn('raw as Plugin, options as Status, options as Aksi, register_date as "Dipasang"');
 
 // Search action
+$criteria = 'options is not null and '.jsonCriteria('raw', '$.Type', 'Plugin');
+
 if (isset($_GET['keywords']) AND $_GET['keywords']) 
 {
     $keywords = utility::filterData('keywords', 'get', true, true, true);
-    $criteria = ' path LIKE "%'.$keywords.'%"';
-    // jika ada keywords maka akan disiapkan criteria nya
-    $datagrid->setSQLCriteria($criteria);
+    $criteria .= ' and raw LIKE "%'.$keywords.'%"';
 }
+
+// jika ada keywords maka akan disiapkan criteria nya
+$datagrid->setSQLCriteria($criteria);
 
 /**
  * Ordering
  */
-$datagrid->setSQLorder('path ASC');
+$datagrid->setSQLorder('register_date ASC');
 
 // Modification
-function setUpDescription($db, $data)
+/**
+ * setUpDescription
+ *
+ * @param object $db
+ * @param array $data
+ * @return void
+ */
+function setUpDescription(object $db, array $data)
 {
     // extracting json data
-    $decodedData = getActivePluginInfo($data[0]);
+    $decodedData = json_decode($data[0], TRUE);
     // modify string of plugin name
-    $pluginName = ucwords(str_replace('_', ' ', $decodedData['name']));
+    $pluginName = ucwords(str_replace('_', ' ', $decodedData['PluginName']));
     // filtering destriction
-    $description = strip_tags($decodedData['description']);
+    $description = strip_tags($decodedData['Description']);
     // set version variable
-    $version = $decodedData['version'];
+    $version = $decodedData['Version'];
     // Author in html
-    $author = '<a class="notAJAX" target="_blank" href="'.$decodedData['author_uri'].'">'.$decodedData['author'].'</a>';
+    $author = '<a class="notAJAX" target="_blank" href="'.$decodedData['AuthorURI'].'">'.$decodedData['Author'].'</a>';
     // decision Icon type
     $icon = 'puzzle-op.png';
     // set up template
@@ -45,7 +63,7 @@ function setUpDescription($db, $data)
                 <img style="width: 50px; margin-left: 10px; margin-right: 10px; margin-top: -50px" src="modules/barista/{$icon}"/>
             </div>
             <div class="d-inline-block">
-                <h6><a class="notAJAX w-full block" target="_blank" href="{$decodedData['uri']}"><b>{$pluginName}</b></a></h6>
+                <h6><a class="notAJAX w-full block" target="_blank" href="{$decodedData['PluginURI']}"><b>{$pluginName}</b></a></h6>
                 <p class="w-full block text-justify mb-0">{$description}</p>
                 <span class="d-inline-block">{$author}</span> :: <span class="d-inline-block text-danger">{$version}</span>
             </div>
@@ -54,57 +72,91 @@ function setUpDescription($db, $data)
 
     return $template;
 }
-
-function getActivePluginInfo($path)
-{
-    // took from lib/Plugins.php 
-    $file_open = fopen($path, 'r');
-    $raw_data = fread($file_open, 8192);
-    fclose($file_open);
-
-    // store plugin info as object
-    $plugin = [];
-
-    // parsing plugin data
-    preg_match('|Plugin Name:(.*)$|mi', $raw_data, $plugin['name']);
-    preg_match('|Plugin URI:(.*)$|mi', $raw_data, $plugin['uri']);
-    preg_match('|Version:(.*)|i', $raw_data, $plugin['version']);
-    preg_match('|Description:(.*)$|mi', $raw_data, $plugin['description']);
-    preg_match('|Author:(.*)$|mi', $raw_data, $plugin['author']);
-    preg_match('|Author URI:(.*)$|mi', $raw_data, $plugin['author_uri']);
-
-    foreach ($plugin as $key => $val) {
-        $plugin[$key] = isset($val[1]) && trim($val[1]) !== '' ? trim($val[1]) : null;
-    }
-
-    $plugin['id'] = md5($path);
-    $plugin['path'] = $path;
-
-    return $plugin;
-}
-
 $datagrid->modifyColumnContent(0, 'callback{setUpDescription}');
 
-function setActionButton($db, $data)
+/**
+ * isPluginActive
+ *
+ * @param object $db
+ * @param string $id
+ * @return boolean
+ */
+function isPluginActive(object $db, string $id)
 {
-    return <<<HTML
-        <button class="btn btn-primary" data-hash="{$data[1]}"> 
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-up-circle" viewBox="0 0 16 16">
-                <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-7.5 3.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V11.5z"/>
-            </svg>
-            Cek Pembaharuan
-        </button>
-        <button class="btn btn-danger" data-hash="{$data[1]}"> 
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
-                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-            </svg>
-            Hapus
-        </button>
-    HTML;
+    // check plugin active;
+    $pluginId = $db->escape_string($id);
+    $active = $db->query('select id from plugins where id = \''.$id.'\'')->num_rows;
+
+    return $active;
 }
 
-$datagrid->modifyColumnContent(1, 'callback{setActionButton}');
+/**
+ * setStatus
+ *
+ * @param object $db
+ * @param array $data
+ * @return void
+ */
+function setStatus(object $db, array $data)
+{
+    // decoding
+    $options = json_decode($data[1], TRUE);
+    if (file_exists($options['path']))
+    {
+        // check plugin active;
+        if (isPluginActive($db, $options['id']))
+        {
+            return '<span class="btn bg-success p-1 text-white">Aktif</span>';
+        }
+        return '<span class="btn bg-danger p-1 text-white">Tidak Aktif</span>';
+    }
+    // other
+    return '<button title="Kemungkinan folder plugin hilang, atau terhapus" class="btn btn-danger">Plugin Korup</button>';
+}
+$datagrid->modifyColumnContent(1, 'callback{setStatus}');
+
+/**
+ * btnAction
+ *
+ * @param object $db
+ * @param array $data
+ * @return void
+ */
+function btnAction(object $db, array $data)
+{
+    // decoding
+    $options = json_decode($data[2], TRUE);
+    if (file_exists($options['path']))
+    {
+        // button active
+        $buttonStatus = (isPluginActive($db, $options['id'])) ? ['btn-warning', 'Non-aktifkan'] : ['btn-success', 'Aktfikan'];
+        // set button
+        return <<<HTML
+            <button class="btn btn-primary my-2 d-block" onclick="toastr.info('Belum tersedia pada fitur ini', 'Info')" data-id="{$options['id']}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-repeat" viewBox="0 0 16 16">
+                    <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
+                    <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
+                </svg>
+                <span>Perbaharui</span>
+            </button>
+            <button class="btn {$buttonStatus[0]} my-2 d-block" onclick="setStatusPlugin(this)" data-id="{$options['id']}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-power" viewBox="0 0 16 16">
+                    <path d="M7.5 1v7h1V1h-1z"/>
+                    <path d="M3 8.812a4.999 4.999 0 0 1 2.578-4.375l-.485-.874A6 6 0 1 0 11 3.616l-.501.865A5 5 0 1 1 3 8.812z"/>
+                </svg>
+                <span>{$buttonStatus[1]}</span>
+            </button>
+            <button class="btn btn-danger my-2 d-block" onclick="toastr.info('Belum tersedia pada fitur ini', 'Info')" data-id="{$options['id']}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                </svg>
+                <span>Hapus</span>
+            </button>
+        HTML;
+    }
+}
+$datagrid->modifyColumnContent(2, 'callback{btnAction}');
 // end modification
 
 // set table and table header attributes

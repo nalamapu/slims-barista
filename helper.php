@@ -90,6 +90,22 @@ function unsetPost(array $arrayToUnset)
     return $_POST;
 }
 
+/**
+ * isBulian
+ * 
+ * Check SLiMS 9 Bulian version with comparasion
+ *
+ * @param integer $minimumVersion
+ * @return boolean
+ */
+function isBulian(int $minimumVersion)
+{
+    if (preg_replace('/[^0-9]/', '', SENAYAN_VERSION_TAG) >= $minimumVersion)
+    {
+        return true;
+    }
+    return false;
+}
 
 /**
  * baristaMigration
@@ -106,23 +122,28 @@ function baristaMigration(object $sqlOp, bool $generateLocalAvailablePlugin = tr
     global $dbs;
 
     // make table
-    if (!$dbs->query(file_get_contents(__DIR__  . '/migration.sql'))) 
+    if ($dbs->query('show tables like \'barista_files\'')->num_rows === 0) 
     {
-        utility::jsAlert($dbs->error);
-        exit;
+        if (!$dbs->query(file_get_contents(__DIR__  . '/migration.sql')))
+        {
+            utility::jsAlert($dbs->error);
+            exit;
+        }
     }
 
     if ($generateLocalAvailablePlugin && file_exists(__DIR__ . '/barista-plugin-local.json'))
     {
         $data = json_decode(file_get_contents(__DIR__ . '/barista-plugin-local.json'), TRUE);
-
+        $query = [];
         foreach ($data as $index => $plugin) {
-            $id = ($index);
+            $id = ($index + 1);
             if (!localIdExists([$dbs, $sqlOp], $id, $plugin))
             {
-                @$sqlOp->insert('barista_files', ['id' => $id, 'raw' => json_encode($plugin), 'register_date' => date('Y-m-d H:i:s'), 'last_update' => date('Y-m-d H:i:s')]);
+                @$sqlOp->insert('barista_files', ['id' => $id, 'raw' => $dbs->escape_string(json_encode($plugin)), 'register_date' => date('Y-m-d H:i:s'), 'last_update' => date('Y-m-d H:i:s')]);
+                $query[] = $sqlOp->getSQL();
             }
         }
+        file_put_contents(__DIR__ . '/dump-sql', implode("\n", $query));
     }
 }
 
@@ -136,6 +157,8 @@ function baristaMigration(object $sqlOp, bool $generateLocalAvailablePlugin = tr
  */
 function localIdExists(array $objectInArray, int $id, array $data)
 {
+    global $dbs;
+
     // filtering
     $baristaId = (replaceString($id, 'num') + 1);
     // check query
@@ -143,7 +166,7 @@ function localIdExists(array $objectInArray, int $id, array $data)
 
     if ($checkId->num_rows === 1)
     {
-        $objectInArray[1]->update('barista_files', ['raw' => json_encode($data), 'last_update' => date('Y-m-d H:i:s')], 'id='.$baristaId);
+        $objectInArray[1]->update('barista_files', ['raw' => $dbs->escape_string(json_encode($data)), 'last_update' => date('Y-m-d H:i:s')], 'id='.$baristaId);
         return true;
     }
     // set false
@@ -170,6 +193,19 @@ function simbioRedirect(string $destionationUrl, string $selector = '#mainConten
     HTML;
 }
 
+/**
+ * Modules directory Check
+ *
+ * @return void
+ */
+function modulesDirCheck()
+{
+    if (!is_writable(SB.'admin'.DS.'modules'.DS))
+    {
+        components('banner.php');
+        exit('<div class="bg-danger text-white p-2 h6 font-weight-bold">Direktori '.SB.'admin'.DS.'modules'.DS.' tidak dapat ditulis.</div>');
+    }
+}
 
 /**
  * Check php version 
@@ -279,7 +315,7 @@ function renamingZipDir(bool $zip, string $namepath, string $branch, string $url
         // delete and overwrite
         if ($sysconf['barista']['auto_active'] === 'y' && file_exists(SB.'plugins/'.$namepath))
         {
-            @rmdir(SB.'plugins/'.$namepath);
+            @rrmdir(SB.'plugins/'.$namepath);
         }
 
         // renaming folder
@@ -290,12 +326,12 @@ function renamingZipDir(bool $zip, string $namepath, string $branch, string $url
             try {
                 activatingPlugin($url, $baristaId);
             } catch (Exception $exception) {
-                echo json_encode(['status' => false, 'message' => $exception->getMessage()]);
+                responseJson(['status' => false, 'message' => $exception->getMessage()]);
                 exit;
             }
         }
     }
-    echo json_encode(['status' => $zip, 'msg' => 'Gagal mengekstrak zip, folder sudah ada atau folder korup!']);
+    responseJson(['status' => $zip, 'msg' => 'Gagal mengekstrak zip, folder sudah ada atau folder korup!']);
     exit;
 }
 
@@ -320,7 +356,7 @@ function activatingPlugin(string $url, int $baristaId)
         return $plugin->uri === $url;
     });
     // get plugin id
-    $id = array_keys($metaObjectPlugin)[0] ?? die(json_encode(['status' => false, 'msg' => 'Plugin not found']));
+    $id = array_keys($metaObjectPlugin)[0] ?? die(responseJson(['status' => false, 'msg' => 'Plugin not found']));
     // set plugin
     $plugin = $metaObjectPlugin[$id];
 
@@ -329,18 +365,18 @@ function activatingPlugin(string $url, int $baristaId)
     {
         // setup options
         $baristaOptions = DB::getInstance()
-                        ->prepare('update barista_files set options = ?, active = ? where id = ?');
+                        ->prepare('update barista_files set options = ? where id = ?');
 
-        $baristaOptions->execute([json_encode(['id' => $id, 'path' => $plugin->path, 'version' => $plugin->version]), 0, $baristaId]);
+        $baristaOptions->execute([json_encode(['id' => $id, 'path' => $plugin->path, 'version' => $plugin->version]), $baristaId]);
         // set response
-        echo json_encode(['status' => true, 'message' => 'Plugin berhasil diinstall']);
+        responseJson(['status' => true, 'message' => 'Plugin berhasil diinstall']);
         exit;
     }
 
     // active query
     $activeQuery = DB::getInstance()->prepare('INSERT INTO plugins (id, path, options, created_at, deleted_at, uid) VALUES (:id, :path, :options, :created_at, :deleted_at, :uid)');
 
-    if (preg_replace('/[^0-9]/', '', SENAYAN_VERSION_TAG) >= '940')
+    if (isBulian(940))
     {
         if ($pluginInstance->isActive($id))
             $activeQuery = DB::getInstance()->prepare('UPDATE `plugins` SET `path` = :path, `options` = :options, `updated_at` = :created_at, `deleted_at` = :deleted_at, `uid` = :uid WHERE `id` = :id');
@@ -368,17 +404,105 @@ function activatingPlugin(string $url, int $baristaId)
     if ($run) {
         // setup options
         $baristaOptions = DB::getInstance()
-                        ->prepare('update barista_files set options = ?, active = ? where id = ?');
+                        ->prepare('update barista_files set options = ? where id = ?');
 
-        $baristaOptions->execute([json_encode(['id' => $id, 'path' => $plugin->path, 'version' => $plugin->version]), 1, $baristaId]);
+        $baristaOptions->execute([json_encode(['id' => $id, 'path' => $plugin->path, 'version' => $plugin->version]), $baristaId]);
         // set response
-        echo json_encode(['status' => true, 'message' => $message]);
+        responseJson(['status' => true, 'message' => $message]);
     } else {
-        echo json_encode(['status' => false, 'message' => DB::getInstance()->errorInfo()]);
+        responseJson(['status' => false, 'message' => DB::getInstance()->errorInfo()]);
     }
     exit;
 }
 
+/**
+ * Disactivating Plugin
+ *
+ * @param string $id
+ * @return void
+ */
+function disActivatingPlugin(string $id)
+{
+    // Some modification from admin/modules/system/plugins.php
+    // get instances
+    $plugins = Plugins::getInstance();
+
+    $plugin = array_filter($plugins->getPlugins(), function ($plugin) use ($id) {
+                                return $plugin->id === $id;
+                           })[$id] ?? die(json_encode(['status' => false, 'message' => __('Plugin not found')]));
+
+    
+    if (property_exists($plugin, 'migration') && isBulian(940))
+    {
+        // set run down
+        if ($plugin->migration->is_exist) SLiMS\Migration\Runner::path($plugin->path)->setVersion($plugin->migration->{Plugins::DATABASE_VERSION})->runDown();
+        
+        $process = DB::getInstance()->prepare("DELETE FROM plugins WHERE id = ?");
+    } else {
+        $process = DB::getInstance()->prepare("DELETE FROM plugins WHERE id = ?");
+    }
+
+    $status = $process->execute([$id]);
+
+    if ($status)
+    {
+        return ['status' => true, 'msg' => 'Plugin dinonaktifkan'];
+    }
+    // set error
+    return ['status' => false, 'msg' => 'Plugin tidak berhasil dinonaktifkan'];
+}
+
+/**
+ * Reactivate Plugin
+ *
+ * @param string $id
+ * @return void
+ */
+function reActivatingPlugin(string $id)
+{
+    // Some modification from admin/modules/system/plugins.php
+    // get instances
+    $plugins = Plugins::getInstance();
+
+    $plugin = array_filter($plugins->getPlugins(), function ($plugin) use ($id) {
+                                return $plugin->id === $id;
+                           })[$id] ?? die(json_encode(['status' => false, 'message' => __('Plugin not found')]));
+
+     // active query
+     $activeQuery = DB::getInstance()->prepare('INSERT INTO plugins (id, path, options, created_at, deleted_at, uid) VALUES (:id, :path, :options, :created_at, :deleted_at, :uid)');
+
+     if (isBulian(940))
+     {
+         if ($plugins->isActive($id))
+             $activeQuery = DB::getInstance()->prepare('UPDATE `plugins` SET `path` = :path, `options` = :options, `updated_at` = :created_at, `deleted_at` = :deleted_at, `uid` = :uid WHERE `id` = :id');
+ 
+         $options = ['version' => $plugin->version];
+         // run migration if available
+         if ($plugin->migration->is_exist) {
+             $options[Plugins::DATABASE_VERSION] = SLiMS\Migration\Runner::path($plugin->path)->setVersion($plugin->migration->{Plugins::DATABASE_VERSION})->runUp();
+             $activeQuery->bindValue(':options', json_encode($options));
+         } else {
+             $activeQuery->bindValue(':options', null);
+         }
+ 
+         $activeQuery->bindValue(':created_at', date('Y-m-d H:i:s'));
+         $activeQuery->bindValue(':deleted_at', null);
+     }
+ 
+     $activeQuery->bindValue(':id', $id);
+     $activeQuery->bindValue(':path', $plugin->path);
+     $activeQuery->bindValue(':uid', $_SESSION['uid']);
+     $message = sprintf(__('Plugin %s enabled'), $plugin->name);
+ 
+     $run = $activeQuery->execute();
+
+     if ($run) {
+        // set response
+        return ['status' => true, 'msg' => $message];
+    } else {
+        return ['status' => false, 'msg' => DB::getInstance()->errorInfo()];
+    }
+}
 
 /**
  * Get POST data from RAW input
@@ -435,7 +559,7 @@ function test()
 }
 
 /**
- * dd a.k.a dump data
+ * dd a.k.a dump data (like Laravel but just dump :D)
  *
  * @param mix $mix
  * @param boolean $exit
@@ -448,6 +572,63 @@ function dd($mix, bool $exit = true)
     echo '</pre>';
 
     if ($exit) exit;
+}
+
+/**
+ * jsonExtractExists
+ *
+ * check JSON_EXTRACT exists in RDMS
+ *  
+ * @return boolean
+ */
+function jsonExtractExists()
+{
+    global $dbs;
+
+    $dbs->query('select json_extract(\'{"name": "Barista"}\', \'$.name\')');
+
+    if ($dbs->errno === 1305)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * jsonCriteria
+ * 
+ * Generate criteria for JSON data,
+ * if not exists then throw to LIKE statement
+ *
+ * @param string $column
+ * @param string $prop
+ * @param string $value
+ * @return void
+ */
+function jsonCriteria(string $column, string $prop, string $value)
+{
+    $criteria = $column . ' like "%' . $value . '%"';
+    if (jsonExtractExists())
+    {
+        $criteria = 'json_extract('.$column.', \''.$prop.'\') = \''.$value.'\'';
+    }
+    return $criteria;
+}
+
+/**
+ * responseJSON
+ *
+ * set out data with json encoding
+ * 
+ * @param mix $mixData
+ * @return void
+ */
+function responseJson($mixData)
+{
+    header('Content-Type: application/json');
+    echo json_encode($mixData);
+    exit;
 }
 
 /**
@@ -482,8 +663,34 @@ function replaceString(string $input, string $type = 'alphanum', string $regex =
     return $result;
 }
 
+/**
+ * Recursively empty and delete a directory
+ * 
+ * @param string $path
+ * @ref https://gist.github.com/jmwebservices/986d9b975eb4deafcb5e2415665f8877
+ */
+function rrmdir( string $path ) : void
+{
+
+    if( trim( pathinfo( $path, PATHINFO_BASENAME ), '.' ) === '' )
+        return;
+
+    if( is_dir( $path ) )
+    {
+        array_map( 'rrmdir', glob( $path . DIRECTORY_SEPARATOR . '{,.}*', GLOB_BRACE | GLOB_NOSORT ) );
+        @rmdir( $path );
+    }
+
+    else
+        @unlink( $path );
+
+}
+
 // run php check
 phpVersionCheck();
 
 // curl check
 curlCheck();
+
+// check if admin/modules/ is writeable or not
+modulesDirCheck();

@@ -23,7 +23,7 @@ if (!defined('SB')) {
 }
 
 // Barista Version
-define('BARISTA_VERSION', '1.0.0-alpha-3');
+define('BARISTA_VERSION', '1.0.0-beta-1');
 
 // load settings
 utility::loadSettings($dbs);
@@ -61,7 +61,9 @@ components('welcome.php');
 /* Action Area */
 if (isset($_GET['action']))
 {
-    components('install.php');
+    $actionType = replaceString($_GET['action'], 'alpha');
+    fileLoader(__DIR__ . '/actions/'.$actionType.'.php');
+    exit;
 }
 /* End Action Area */
 ?>

@@ -35,7 +35,7 @@ function navClick(e){
  * 
  * @return void
  */
-function install(e, path, url, branch)
+async function install(e, path, url, branch)
 {
     // just for short
     let doc = document
@@ -62,7 +62,7 @@ function install(e, path, url, branch)
 
     // make post request
     let httpurl = doc.querySelector('script[with-url="yes"]').getAttribute('http-url')
-    fetch(`${httpurl}?action=install`, {
+    await fetch(`${httpurl}?action=install`, {
         method: 'POST',
         body: JSON.stringify({
             pathDest: path,
@@ -73,7 +73,6 @@ function install(e, path, url, branch)
     })
     .then(response => response.json())
     .then(result => {
-        
         if (result.status)
         {
             // remove disable class
@@ -121,6 +120,41 @@ function install(e, path, url, branch)
     })
 }
 
+async function setStatusPlugin(el)
+{
+    let label = el.children[1].innerHTML
+    let dataId = el.getAttribute('data-id')
+    let httpurl = document.querySelector('script[with-url="yes"]').getAttribute('http-url')
+
+    let action = 'renable';
+    if (label === 'Non-aktifkan')
+    {
+        action = 'disable'
+    }
+
+    await fetch(`${httpurl}?action=${action}`, {
+        method: 'POST',
+        body: JSON.stringify({
+            id: dataId
+        })
+    })
+    // .then(response => response.text())
+    .then(response => response.json())
+    .then(result => {
+        // console.log(result)
+        if (result.status)
+        {
+            parent.toastr.success(result.msg, 'Plugin')
+            setTimeout(() => {$('#mainContent').simbioAJAX(`${httpurl}?section=plugin`)}, 2000)
+        }
+        else
+        {
+            parent.toastr.error(res.msg, 'Galat')
+        }
+    })
+    .catch(error => {alert(error)})
+}
+
 /**
  * @param mixed resultSelector
  * 
@@ -137,9 +171,53 @@ function isOnline(resultSelector)
     }
 }
 
-function checkUpdate(id)
+async function checkUpdate(el, currentVersion)
 {
-    
+    el.children[0].classList.add('d-none')
+    el.children[1].classList.remove('d-none')
+    el.children[2].innerHTML = 'Memproses'
+    el.classList.remove('btn-primary')
+    el.classList.add('btn-info')
+
+    await fetch('https://api.github.com/repos/drajathasan/slims-barista-repo/releases/latest')
+    .then(response => response.json())
+    .then(result => {
+        if (result.name > currentVersion)
+        {
+            el.children[0].classList.remove('d-none')
+            el.children[1].classList.add('d-none')
+            el.children[2].innerHTML = 'Terdapat versi terbaru (Klik untuk upgrade)'
+            el.classList.remove('btn-info')
+            el.classList.add('btn-success')
+        }
+        else
+        {
+            el.children[0].classList.remove('d-none')
+            el.children[1].classList.add('d-none')
+            el.children[2].innerHTML = 'Tidak ada pembaharuan'
+            el.classList.remove('btn-info')
+            el.classList.add('btn-success')
+        }
+    })
+    .catch(error => {alert(error)})    
+}
+
+async function getLastListApp()
+{
+    let url = document.querySelector('script[with-url="yes"]').getAttribute('http-url');
+
+    fetch(`${url}?action=updateList`)
+    .then(response => response.json())
+    .then(result => {
+        if (result.status)
+        {
+            location.reload();
+        }
+        else
+        {
+            parent.toastr.error(result.msg, 'Galat');
+        }
+    })
 }
 
 // check connection
