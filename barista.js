@@ -205,19 +205,19 @@ async function checkUpdate(el, currentVersion)
 async function getLastListApp()
 {
     let url = document.querySelector('script[with-url="yes"]').getAttribute('http-url');
-
-    fetch(`${url}?action=updateList`)
-    .then(response => response.json())
-    .then(result => {
-        if (result.status)
-        {
-            location.reload();
-        }
-        else
-        {
-            parent.toastr.error(result.msg, 'Galat');
-        }
-    })
+    parent.toastr.info('Fitur belum stabil, semoga kedepan dapat digunakan :)', 'Info');
+    // fetch(`${url}?action=updateList`)
+    // .then(response => response.json())
+    // .then(result => {
+    //     if (result.status)
+    //     {
+    //         location.reload();
+    //     }
+    //     else
+    //     {
+    //         parent.toastr.error(result.msg, 'Galat');
+    //     }
+    // })
 }
 
 // check connection
