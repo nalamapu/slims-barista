@@ -23,7 +23,7 @@ if (!defined('SB')) {
 }
 
 // Barista Version
-define('BARISTA_VERSION', '1.0.0-beta-1.1');
+define('BARISTA_VERSION', '1.0.0-beta-1.2');
 
 // load settings
 utility::loadSettings($dbs);

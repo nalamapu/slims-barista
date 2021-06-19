@@ -179,7 +179,7 @@ async function checkUpdate(el, currentVersion)
     el.classList.remove('btn-primary')
     el.classList.add('btn-info')
 
-    await fetch('https://api.github.com/repos/drajathasan/slims-barista-repo/releases/latest')
+    await fetch('https://api.github.com/repos/drajathasan/slims-barista/releases/latest')
     .then(response => response.json())
     .then(result => {
         if (result.name > currentVersion)

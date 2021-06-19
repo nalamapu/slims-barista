@@ -143,7 +143,6 @@ function baristaMigration(object $sqlOp, bool $generateLocalAvailablePlugin = tr
                 $query[] = $sqlOp->getSQL();
             }
         }
-        file_put_contents(__DIR__ . '/dump-sql', implode("\n", $query));
     }
 }
 
