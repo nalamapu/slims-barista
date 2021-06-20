@@ -12,12 +12,17 @@ isDirect();
 
 echo <<<HTML
     <div class="w-100 block p-3 text-white">
-        <button onclick="getLastListApp()" class="btn btn-danger float-right">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up" viewBox="0 0 16 16">
-            <path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1h-2z"/>
-            <path fill-rule="evenodd" d="M7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708l3-3z"/>
+        <button onclick="getLastListApp(this)" class="btn btn-danger float-right">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-box-arrow-up" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1h-2z"/>
+                <path fill-rule="evenodd" d="M7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708l3-3z"/>
             </svg>
-            Perbaharui daftar
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="spinLoader d-none" style="margin: auto;" width="20" height="20" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">
+                <circle cx="50" cy="50" r="32" stroke-width="8" stroke="#e0e0e0" stroke-dasharray="50.26548245743669 50.26548245743669" fill="none" stroke-linecap="round">
+                <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" keyTimes="0;1" values="0 50 50;360 50 50"></animateTransform>
+                </circle>
+            </svg> 
+            <span>Perbaharui daftar</span>
         </button>
     </div>
 HTML;
@@ -45,23 +50,63 @@ $datagrid->setSQLColumn('raw as Deskripsi, id as Aksi, last_update as "Terakhir 
  * @param integer $id
  * @return Array
  */
-function isPluginActive(object $db, int $id)
+function isPluginActive(object $db, int $id, string $path, string $url)
 {
     // get options
     $id = (int)$id;
-    $data = $db->query('select options from barista_files where id = '.$id.' and options is not null');
+    $data = $db->query('select options from barista_files where id = '.$id.' and options != \'\'');
 
     if ($data->num_rows > 0)
     {
         $result = $data->fetch_row();
         $meta = json_decode($result[0], TRUE);
 
-        if (file_exists($meta['path']))
+        if (isset($meta['path']) && file_exists($meta['path']))
         {
             $plugin = $db->query('select id from plugins where id = \''.$db->escape_string($meta['id']).'\'');
             return ($plugin->num_rows) ? PluginActive : PluginInstalledNotActive;
         }
         return PluginCorrupted;
+    }
+    else
+    {
+        return isPluginExistsBeforeBarista($db, $id, $path, $url);
+    }
+
+    return PluginNotInstalled;
+}
+
+function isPluginExistsBeforeBarista(object $db, int $baristaId, string $path, string $url)
+{
+    // check in plugin table
+    $pluginQuery = $db->query('select id, path, options from plugins where path like "%'.$db->escape_string($path).'%"');
+
+    if ($pluginQuery->num_rows === 1)
+    {
+        $data = $pluginQuery->fetch_assoc();
+        $options = json_decode($data['options'], TRUE);
+        $baristaId = (int)$baristaId;
+        $baristaOptions = $db->escape_string(json_encode(['id' => $data['id'], 'path' => $data['path'], 'version' => $options['version']]));
+        return ($db->query('update barista_files set options = \''.$baristaOptions.'\' where id ='.$baristaId)) ? PluginActive : PluginInstalledNotActive;
+    }
+    else
+    {
+        // set up plugin instances
+        $pluginInstance = SLiMS\Plugins::getInstance();
+        // grab meta plugin -> took form plugins.php
+        $metaObjectPlugin = array_filter($pluginInstance->getPlugins(), function ($plugin) use ($url) {
+            return $plugin->uri === $url;
+        });
+        // get plugin id
+        $getId = array_keys($metaObjectPlugin);
+
+        if (count($getId))
+        {
+            $id = $getId[0];
+            $meta = $metaObjectPlugin[$id];
+            $baristaOptions = $db->escape_string(json_encode(['id' => $id, 'path' => $meta->path, 'version' => $meta->version]));
+            return ($db->query('update barista_files set options = \''.$baristaOptions.'\' where id ='.$baristaId)) ? PluginInstalledNotActive : PluginNotInstalled;
+        }
     }
 
     return PluginNotInstalled;
@@ -84,10 +129,10 @@ function setupActionButton(object $db, array $column)
     $path = $getPathName[(count($getPathName) - 1)];
     // Branch
     $branch = $data['Branch'];
-    // set button prop
-    $button = isPluginActive($db, $column[1]);
     // Plugin URL
     $pluginURL = rtrim($data['PluginURI']);
+    // set button prop
+    $button = isPluginActive($db, $column[1], $path, $pluginURL);
     // set out
     $buffer = <<<HTML
             <button class="btn {$button[0]} actionBtn" title="{$button[2]}"><span class="d-inline-block">{$button[1]}</span></button></button>'

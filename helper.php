@@ -159,7 +159,7 @@ function localIdExists(array $objectInArray, int $id, array $data)
     global $dbs;
 
     // filtering
-    $baristaId = (replaceString($id, 'num') + 1);
+    $baristaId = replaceString($id, 'num');
     // check query
     $checkId = $objectInArray[0]->query('select id from barista_files where id = '.$baristaId);
 
@@ -312,7 +312,7 @@ function renamingZipDir(bool $zip, string $namepath, string $branch, string $url
     if ($zip)
     {
         // delete and overwrite
-        if ($sysconf['barista']['auto_active'] === 'y' && file_exists(SB.'plugins/'.$namepath))
+        if ($sysconf['barista']['overwrite'] === 'y' && file_exists(SB.'plugins/'.$namepath))
         {
             @rrmdir(SB.'plugins/'.$namepath);
         }
@@ -501,6 +501,80 @@ function reActivatingPlugin(string $id)
     } else {
         return ['status' => false, 'msg' => DB::getInstance()->errorInfo()];
     }
+}
+
+/**
+ * deletingPlugin
+ *
+ * @param string $id
+ * @return void
+ */
+function deletingPlugin(string $id)
+{
+    // get instances
+    $plugins = Plugins::getInstance();
+
+    // grab meta
+    $meta = array_filter($plugins->getPlugins(), function ($plugin) use ($id) {
+                            return $plugin->id === $id;
+                        })[$id] ?? die(json_encode(['status' => false, 'message' => __('Plugin not found')]));
+    // Fix path
+    $fixPath = getPluginTruePath($meta->path);
+
+    try {
+        // check is active?
+        if ($plugins->isActive($id))
+        {
+            // set DB instance
+            $instance = DB::getInstance();
+            // remove plugin from database
+            $process  = $instance->prepare('delete from plugins where id = ?')->execute([$id]);
+            $deleting = ($process) ? rrmdir($fixPath) : $instance->errorInfo();
+            if ($meta->migration->is_exist && $process && isBulian(940)) 
+            {
+                SLiMS\Migration\Runner::path($meta->path)->setVersion($meta->migration->{Plugins::DATABASE_VERSION})->runDown();
+            }
+            // update barista files
+            updateBaristaFiles($id);
+            // set out
+            return $deleting;
+        }
+        else
+        {
+            // deleting
+            return rrmdir($fixPath);
+        }
+    } catch (Exception $exception) {
+        return $exception->getMessage();
+    }
+}
+
+/**
+ * updateBaristaFiles
+ *
+ * @param string $id
+ * @return void
+ */
+function updateBaristaFiles(string $id)
+{
+    global $dbs;
+    // set id
+    $id = $dbs->escape_string($id);
+    // set options
+    $dbs->query('update barista_files set options = NULL where '.jsonCriteria('options', '$.id', $id));
+}
+
+/**
+ * getPluginTruePath
+ *
+ * @param string $dir
+ * @return void
+ */
+function getPluginTruePath(string $dir)
+{
+    $dirSlice = explode(DS, $dir);
+    unset($dirSlice[array_key_last($dirSlice)]);
+    return implode(DS, $dirSlice);
 }
 
 /**

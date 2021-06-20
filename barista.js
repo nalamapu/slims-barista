@@ -1,4 +1,5 @@
-'use strict'
+// set http url
+let httpurl = document.querySelector('script[with-url="yes"]').getAttribute('http-url')
 
 /**
 * @param mixed e
@@ -9,7 +10,6 @@ function navClick(e){
         
     let target = e.getAttribute('data-target')
     let navlink = document.querySelectorAll('.nav-link')
-    let httpurl = document.querySelector('script[with-url="yes"]').getAttribute('http-url')
 
     navlink.forEach(element => {
         element.classList.remove('active')
@@ -61,7 +61,6 @@ async function install(e, path, url, branch)
     children[1].innerHTML = 'Memasang'
 
     // make post request
-    let httpurl = doc.querySelector('script[with-url="yes"]').getAttribute('http-url')
     await fetch(`${httpurl}?action=install`, {
         method: 'POST',
         body: JSON.stringify({
@@ -120,11 +119,15 @@ async function install(e, path, url, branch)
     })
 }
 
+/**
+ * setStatusPlugin
+ * 
+ * @param object el 
+ */
 async function setStatusPlugin(el)
 {
     let label = el.children[1].innerHTML
     let dataId = el.getAttribute('data-id')
-    let httpurl = document.querySelector('script[with-url="yes"]').getAttribute('http-url')
 
     let action = 'renable';
     if (label === 'Non-aktifkan')
@@ -156,6 +159,39 @@ async function setStatusPlugin(el)
 }
 
 /**
+ * deletePlugin
+ * 
+ * @param object el 
+ */
+async function deletePlugin(el)
+{
+    let dataId = el.getAttribute('data-id')
+
+    await fetch(`${httpurl}?action=delete`, {
+        method: 'POST',
+        body: JSON.stringify({
+            id: dataId,
+            deletePlugin: true
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status)
+        {
+            // set success
+            parent.toastr.success(result.msg, 'Sukses')
+            // redirect
+            setTimeout(() => {$('#mainContent').simbioAJAX(`${httpurl}?section=plugin`)}, 2000)
+        }
+        else
+        {
+            // set success
+            parent.toastr.error(result.msg, 'Galat')
+        }
+    })
+}
+
+/**
  * @param mixed resultSelector
  * 
  * @return [type]
@@ -171,6 +207,12 @@ function isOnline(resultSelector)
     }
 }
 
+/**
+ * checkUpdate
+ * 
+ * @param object el 
+ * @param integer currentVersion 
+ */
 async function checkUpdate(el, currentVersion)
 {
     el.children[0].classList.add('d-none')
@@ -202,22 +244,39 @@ async function checkUpdate(el, currentVersion)
     .catch(error => {alert(error)})    
 }
 
-async function getLastListApp()
+/**
+ * getLastListApp
+ * 
+ * @param object el 
+ */
+async function getLastListApp(el)
 {
-    let url = document.querySelector('script[with-url="yes"]').getAttribute('http-url');
-    parent.toastr.info('Fitur belum stabil, semoga kedepan dapat digunakan :)', 'Info');
-    // fetch(`${url}?action=updateList`)
-    // .then(response => response.json())
-    // .then(result => {
-    //     if (result.status)
-    //     {
-    //         location.reload();
-    //     }
-    //     else
-    //     {
-    //         parent.toastr.error(result.msg, 'Galat');
-    //     }
-    // })
+    let children = el.children
+    let iconOne = children[0]
+    let iconTwo = children[1]
+    let label = children[2]
+
+    // modify button
+    el.classList.remove('btn-danger')
+    el.classList.add('btn-info')
+    iconOne.classList.add('d-none')
+    iconTwo.classList.remove('d-none')
+    label.innerHTML = 'Tunggu Sebentar'
+
+    fetch(`${httpurl}?action=updateList`)
+    .then(response => response.json())
+    .then(result => {
+        if (result.status)
+        {
+            parent.toastr.success(result.msg, 'Sukses')
+        }
+        else
+        {
+            parent.toastr.error(result.msg, 'Galat')
+        }
+        // set button
+        setTimeout(() => {$('#mainContent').simbioAJAX(url)}, 2000);
+    })
 }
 
 // check connection
