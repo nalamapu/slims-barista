@@ -24,7 +24,8 @@ if (isset($_POST['saveBarista']))
     foreach ($_POST as $key => $value) {
         if (empty($_POST[$key]))
         {
-            utility::jsToastr('Galat', 'Isian '.ucwords(str_replace('_', ' ', $key)).' tidak boleh kosong!', 'error');
+            $field = ucwords(str_replace('_', ' ', $key));
+            utility::jsToastr('Galat', sprintf('Isian %s tidak boleh kosong!', $field), 'error');
             break;
         }
         else
@@ -64,7 +65,7 @@ if (isset($_POST['saveBarista']))
         }
     }
 
-    utility::jsToastr('Galat', 'Terdapat error : '.$sqlOp->error, 'danger');
+    utility::jsToastr('Galat', sprintf('Terdapat error : %s', $sqlOp->error), 'danger');
     exit;
 }
 // end action area
@@ -99,9 +100,9 @@ $element = [
             =>
             [
                 ['overwrite', 'Timpa folder', [['y', __('Yes')],['t', __('No')]], $sysconf['barista']['overwrite']??0,'class="form-control col-3"', 'Timpa folder plugin jika sudah ada atau folder tersebut sebelumnya terdeteksi korup'],
-                ['auto_active', __('Otomatis Aktif'), [['y', __('Enable')],['t', __('Disable')]], $sysconf['barista']['auto_active']??0,'class="form-control col-3"'],
-                ['make_cache', __('Hidupkan Cache'), [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['make_cache']??0,'class="form-control col-3"'],
-                ['refresh_to_update', __('Refresh untuk memperbaharui daftar'), [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['refresh_to_update']??0,'class="form-control col-3"']
+                ['auto_active', 'Otomatis Aktif', [['y', __('Enable')],['t', __('Disable')]], $sysconf['barista']['auto_active']??0,'class="form-control col-3"'],
+                ['make_cache', 'Hidupkan Cache', [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['make_cache']??0,'class="form-control col-3"'],
+                ['refresh_to_update', 'Refresh untuk memperbaharui daftar', [['t', __('Disable')],['y', __('Enable')]], $sysconf['barista']['refresh_to_update']??0,'class="form-control col-3"']
             ]
         ];
 

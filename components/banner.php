@@ -16,6 +16,6 @@ isDirect();
     <div class="d-inline-block">
         <h2 class="d-block mt-2" style="color: #5d5043ff"><?php echo $page_title; ?></h2>
         <span class="d-block h5">"Menyajikan mu <b>kopi-an</b> aplikasi pendukung SLiMS"</span>
-        <p>Agregator plugin dan serba-serba lain. <b><a class="notAJAX" href="#">Selengkapnya</a></b></p>
+        <p>Agregator plugin dan serba-serba lain.<b><a class="notAJAX" href="#">Selengkapnya</a></b></p>
     </div>
 </div>
