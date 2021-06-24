@@ -1,10 +1,11 @@
 <?php
 
 $info= [
-    ['Nama Modul : Barista'],
-    ['Alamat Website : https://github.com/drajathasan/slims-barista'], 
-    ['Deskripsi : Modul yang digunakan untuk mencari plugin, template dan module SLiMS.'], 
-    ['Versi : 1.0.0'], 
-    ['Pengembang : Drajat Hasan'], 
-    ['Alamat Website Pengembang : https://github.com/drajathasan/']
+    ['Module Name : Barista'],
+    ['Website Link: https://github.com/drajathasan/slims-barista'], 
+    ['Description : The module is used to search plugins, templates and modules for SLiMS.'], 
+    ['Version : 1.0.0'], 
+    ['Developer : Drajat Hasan'], 
+    ['Developer Website : https://github.com/drajathasan/']
+    ['English Translator : A.K.M. Nurul Alam (Apu), Country Coordinator, SLiMS Bangladesh']
 ];
