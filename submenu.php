@@ -1,5 +1,5 @@
 <?php
 
 $menu = [
-    ['Halaman Utama', './modules/barista/index.php', 'Halamn Utama']
+    ['Module Home', './modules/barista/index.php', 'Module Home']
 ];
